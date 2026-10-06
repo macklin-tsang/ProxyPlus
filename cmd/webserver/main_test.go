@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -15,10 +16,10 @@ func TestResolvePath(t *testing.T) {
 	cases := map[string]bool{ // URL path -> allowed
 		"/":                true,
 		"/test.html?q=1#x": true,
-		"//":               true, // the root dir itself: 404, as in Python
+		"//":               true, // the root dir itself: a 404, not a 403
 		"/a/../test.html":  true,
 		"/../x":            false,
-		"/../ProxyPlus2/x": false, // Python's startswith check let this through
+		"/../ProxyPlus2/x": false, // a plain prefix check would let this through
 	}
 	if runtime.GOOS == "windows" {
 		cases[`/..\..\x`] = false
@@ -35,14 +36,17 @@ func TestResolvePath(t *testing.T) {
 	}
 }
 
+// dateLine matches the Date header, which changes every second.
+var dateLine = regexp.MustCompile(`Date: [^\r]*\r\n`)
+
 func TestBuildResponse(t *testing.T) {
-	got := string(buildResponse(200, "D", "Content-Type: text/html\r\n", []byte("hi")))
+	got := dateLine.ReplaceAllString(string(buildResponse(200, "Content-Type: text/html\r\n", []byte("hi"))), "Date: D\r\n")
 	want := "HTTP/1.1 200 OK\r\nServer: MiniProjectServer/1.0\r\nDate: D\r\nConnection: close\r\n" +
 		"Content-Length: 2\r\nContent-Type: text/html\r\n\r\nhi"
 	if got != want {
 		t.Errorf("got %q\nwant %q", got, want)
 	}
-	if got := string(buildResponse(304, "D", "", nil)); strings.Contains(got, "Content-Length") {
+	if got := string(buildResponse(304, "", nil)); strings.Contains(got, "Content-Length") {
 		t.Errorf("304 must not have Content-Length: %q", got)
 	}
 }

@@ -11,7 +11,7 @@ func TestFrame(t *testing.T) {
 	if err := Write(&buf, 1, true, make([]byte, MaxPayload)); err != nil {
 		t.Fatal(err)
 	}
-	// Same bytes as Python's HDR.pack(4096, 1, True).
+	// Big-endian: length 4096, stream id 1, end flag 1.
 	if got, want := buf.Bytes()[:HeaderSize], []byte{0, 0, 0x10, 0, 0, 0, 0, 1, 1}; !bytes.Equal(got, want) {
 		t.Fatalf("header = % x, want % x", got, want)
 	}

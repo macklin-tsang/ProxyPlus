@@ -1,8 +1,8 @@
 # ProxyPlus
 
 A static web server, a caching HTTP proxy, and a framed-multiplexing demo, written in Go
-using only the standard library. Each Go function mirrors a function in the original Python
-(`webserver.py`, `proxy.py`, `framed_client.py`), whose names appear in the code comments.
+using only the standard library. It replaces an earlier Python version, which is still
+in the git history at commit `f1cdbec`.
 
 | Program | Listens on | Metrics |
 |---|---|---|
@@ -43,8 +43,9 @@ latency histogram. To see them in Grafana (needs Docker):
 Prometheus reaches the servers through `host.docker.internal`. Generate traffic with the
 commands above; the cache hit ratio and latency panels need proxy traffic.
 
-## Differences from the Python version
+## Differences from the original Python version
 
 Sibling-folder paths such as `/../ProxyPlus2/x` get 403, 400 says "Bad Request",
 If-Modified-Since works with whole-second dates, bad ports return 502 instead of hanging,
+unsupported schemes such as `ftp://` are rejected in both the plain and framed paths,
 and request heads and frames are size-capped.

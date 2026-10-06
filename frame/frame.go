@@ -1,5 +1,5 @@
 // Package frame is the 9-byte frame header shared by the framed proxy and the
-// framed client. In Python it was HDR = struct.Struct("!IIB") in proxy.py.
+// framed client.
 package frame
 
 import (
@@ -10,9 +10,9 @@ import (
 
 const (
 	HeaderSize = 9                // u32 payload length, u32 stream id, u8 end flag, big-endian
-	MaxPayload = 4096             // response chunk size (MAX_FRAME in proxy.py)
+	MaxPayload = 4096             // response chunk size
 	maxRead    = 8 << 10          // largest payload Read accepts (URLs and response chunks)
-	Addr       = "127.0.0.1:8889" // framed endpoint (FRAME_PORT in proxy.py)
+	Addr       = "127.0.0.1:8889" // framed endpoint
 )
 
 var ErrTooLarge = errors.New("frame: payload too large")
@@ -43,7 +43,10 @@ func Read(r io.Reader) (id uint32, end bool, payload []byte, err error) {
 	}
 	payload = make([]byte, n)
 	if _, err := io.ReadFull(r, payload); err != nil {
-		return 0, false, nil, io.ErrUnexpectedEOF
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF // the header promised more bytes
+		}
+		return 0, false, nil, err
 	}
 	return binary.BigEndian.Uint32(h[4:8]), h[8] != 0, payload, nil
 }

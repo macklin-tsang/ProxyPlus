@@ -49,7 +49,7 @@ func Serve(addr string) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		write(w)
 	})
-	go func() { log.Printf("metrics: %v", http.ListenAndServe(addr, mux)) }()
+	go func() { log.Fatalf("metrics: %v", http.ListenAndServe(addr, mux)) }()
 }
 
 func write(w io.Writer) {

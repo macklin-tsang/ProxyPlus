@@ -1,5 +1,5 @@
 // Command framedclient fetches several URLs through the framed proxy over one
-// connection and prints when each stream finishes (framed_client.py). If the
+// connection and prints when each stream finishes. If the
 // proxy interleaves frames, small objects finish long before big ones.
 package main
 

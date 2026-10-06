@@ -26,6 +26,8 @@ func TestParseTarget(t *testing.T) {
 		{"HTTP://h/x", "", "h", 80, "/x", false},
 		{"/x", "h:81", "h", 81, "/x", false}, // relative target: host comes from the Host header
 		{"http://h:abc/", "", "", 0, "", true},
+		{"https://h/x", "", "", 0, "", true}, // unsupported schemes must not become a host
+		{"ftp://h/x", "h", "", 0, "", true},
 		{"/x", "", "", 0, "", true}, // no host anywhere
 	}
 	for _, c := range cases {
@@ -147,7 +149,7 @@ func TestProxy(t *testing.T) {
 	if h, m := metrics.CacheHits.Load()-hits, metrics.CacheMisses.Load()-misses; h != 2 || m != 1 {
 		t.Errorf("cache metrics: %d hits, %d misses, want 2 and 1", h, m)
 	}
-	// Exactly one upstream request, with exactly the bytes proxy.py sends.
+	// Exactly one upstream request, with exactly the bytes the proxy should send.
 	want := "GET /a HTTP/1.1\r\nHost: " + o.host() + "\r\nUser-Agent: tester\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n"
 	if got := o.requests(); len(got) != 1 || got[0] != want {
 		t.Errorf("upstream requests = %q, want one %q", got, want)
@@ -264,7 +266,7 @@ func TestFramed(t *testing.T) {
 	if want := len(okHead) + big + len("X-Cache: MISS\r\n"); len(payload[1]) != want {
 		t.Errorf("big stream = %d bytes, want %d", len(payload[1]), want)
 	}
-	if !strings.HasPrefix(string(payload[5]), "HTTP/1.1 502 Bad Gateway\r\n\r\n") {
+	if !strings.HasPrefix(string(payload[5]), "HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n") {
 		t.Errorf("bad-port stream = %q", payload[5])
 	}
 	if frames[last[5]].n != len(payload[5]) {

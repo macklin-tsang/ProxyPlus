@@ -1,5 +1,5 @@
 // Command proxy is a caching HTTP forward proxy built on raw TCP sockets
-// (proxy.py). It also serves the framed endpoint in framed.go.
+// It also serves the framed endpoint in framed.go.
 package main
 
 import (
@@ -70,7 +70,7 @@ func serve(ln net.Listener, handle func(net.Conn)) {
 	}
 }
 
-// handleProxy answers one proxied GET (handle in proxy.py).
+// handleProxy answers one proxied GET.
 func handleProxy(conn net.Conn) {
 	metrics.ActiveConns.Add(1)
 	defer metrics.ActiveConns.Add(-1)
@@ -79,7 +79,7 @@ func handleProxy(conn net.Conn) {
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	line, headers, err := readHead(bufio.NewReader(io.LimitReader(conn, maxHead)))
 	if err != nil {
-		return // no complete request head: close silently, like Python
+		return // no complete request head: close silently
 	}
 	metrics.Requests.Add(1)
 	method, target, _ := strings.Cut(line, " ")
@@ -117,13 +117,13 @@ func readHead(br *bufio.Reader) (string, map[string]string, error) {
 	return "", nil, err
 }
 
-// errorResponse is error_message in proxy.py.
+// errorResponse builds an error reply with optional detail text as the body.
 func errorResponse(status int, detail string) []byte {
 	return fmt.Appendf(nil, "HTTP/1.1 %d %s\r\nConnection: close\r\n\r\n%s", status, http.StatusText(status), detail)
 }
 
 // retrieve fetches target through the cache and splices an X-Cache header in
-// right after the status line (retrieve_object). The cached bytes never change.
+// right after the status line The cached bytes never change.
 func retrieve(target string, headers map[string]string) (obj []byte, state, key string, err error) {
 	host, port, path, err := parseTarget(target, headers["host"])
 	if err != nil {
@@ -142,10 +142,14 @@ func retrieve(target string, headers map[string]string) (obj []byte, state, key 
 	return slices.Concat(status, []byte("\r\nX-Cache: "+state+"\r\n"), rest), state, key, nil
 }
 
-// parseTarget splits a request target into host, port and path (url_parse).
+// parseTarget splits a request target into host, port and path.
 // A relative target such as "/x" takes its host from the Host header.
 func parseTarget(target, hostHeader string) (host string, port int, path string, err error) {
 	if !strings.HasPrefix(strings.ToLower(target), "http://") {
+		// Only plain http is supported; "https://x" or "ftp://x" must not become a host name.
+		if scheme, _, ok := strings.Cut(target, "://"); ok && !strings.Contains(scheme, "/") {
+			return "", 0, "", fmt.Errorf("unsupported scheme %q", scheme)
+		}
 		target = "http://" + hostHeader + target
 	}
 	authority, rest, _ := strings.Cut(target[len("http://"):], "/")
@@ -163,7 +167,7 @@ func parseTarget(target, hostHeader string) (host string, port int, path string,
 }
 
 // cachedFetch returns the cached response for key, or fetches and stores it
-// (fetch_cache). The lock is never held during network I/O.
+// The lock is never held during network I/O.
 func cachedFetch(key, host string, port int, path, ua string) ([]byte, string, error) {
 	cacheMu.Lock()
 	resp, ok := cache[key]

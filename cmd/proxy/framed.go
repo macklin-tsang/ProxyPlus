@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 	"time"
@@ -11,7 +10,7 @@ import (
 	"proxyplus/metrics"
 )
 
-const rate = 1 << 20 // pacing in bytes/sec per connection (RATE in proxy.py)
+const rate = 1 << 20 // pacing in bytes/sec per connection
 
 type request struct {
 	id  uint32
@@ -23,7 +22,7 @@ type stream struct {
 	data []byte // response bytes not yet sent
 }
 
-// serveFramed answers one framed connection (frame + owner in proxy.py). It is
+// serveFramed answers one framed connection. It is
 // the scheduler and the only goroutine that writes to conn: it starts a fetch
 // per request, queues each stream once its object is fully fetched, and sends
 // one 4096-byte frame per turn in round-robin order, paced at rate. A big
@@ -101,24 +100,17 @@ func readRequests(conn net.Conn, reqs chan<- request, quit <-chan struct{}) {
 	}
 }
 
-// fetchStream fetches one URL (framing_thread). Any failure, even a panic,
-// becomes a 502 response so the stream still ends and the scheduler can finish.
+// fetchStream fetches one URL. Any failure becomes a 502 response, so the
+// stream still ends and the scheduler can finish.
 func fetchStream(r request, ready chan<- stream, quit <-chan struct{}) {
-	s := stream{id: r.id}
-	defer func() {
-		if e := recover(); e != nil {
-			s.data = fmt.Appendf(nil, "HTTP/1.1 502 Bad Gateway\r\n\r\n%v", e)
-		}
-		select {
-		case ready <- s:
-		case <-quit: // connection already gone
-		}
-	}()
 	obj, state, key, err := retrieve(r.url, nil)
 	if err != nil {
-		s.data = []byte("HTTP/1.1 502 Bad Gateway\r\n\r\n" + err.Error())
-		return
+		obj = errorResponse(502, err.Error())
+	} else {
+		log.Printf("stream %d %s %s", r.id, state, key)
 	}
-	log.Printf("stream %d %s %s", r.id, state, key)
-	s.data = obj
+	select {
+	case ready <- stream{r.id, obj}:
+	case <-quit: // connection already gone
+	}
 }
