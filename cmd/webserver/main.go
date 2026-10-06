@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	addr        = "0.0.0.0:8080"
+	addr        = "127.0.0.1:8080"
 	metricsAddr = "127.0.0.1:9101"
 	serverName  = "MiniProjectServer/1.0"
 	maxHead     = 8 << 10 // request heads are cut off after 8 KiB

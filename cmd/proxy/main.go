@@ -28,7 +28,8 @@ const (
 	maxHead     = 8 << 10 // request heads are cut off after 8 KiB
 )
 
-// The cache maps "http://host:port/path" to the raw upstream response.
+// The cache maps "http://host:port/path" to the raw upstream response. Only
+// 200 replies are stored, so an error page is never served from the cache.
 // ponytail: one global lock, unbounded, no eviction, concurrent misses both
 // fetch; add an in-flight map or LRU if origin load or memory matters.
 var (
@@ -184,10 +185,19 @@ func cachedFetch(key, host string, port int, path, ua string) ([]byte, string, e
 	if len(resp) == 0 {
 		return nil, "", errors.New("Empty Response")
 	}
-	cacheMu.Lock()
-	cache[key] = resp
-	cacheMu.Unlock()
+	if isOK(resp) {
+		cacheMu.Lock()
+		cache[key] = resp
+		cacheMu.Unlock()
+	}
 	return resp, "MISS", nil
+}
+
+// isOK reports whether resp starts with a 200 status line.
+func isOK(resp []byte) bool {
+	line, _, _ := bytes.Cut(resp, []byte("\r\n"))
+	f := strings.Fields(string(line))
+	return len(f) >= 2 && f[1] == "200"
 }
 
 // fetch sends a plain GET to the origin and reads the raw response until the

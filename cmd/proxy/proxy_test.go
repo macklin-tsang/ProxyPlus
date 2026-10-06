@@ -129,7 +129,10 @@ func ask(t *testing.T, addr, req string) string {
 const okHead = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n"
 
 func TestProxy(t *testing.T) {
-	o := newOrigin(t, map[string]string{"/a": okHead + "hi", "/b": okHead + "concurrent"})
+	o := newOrigin(t, map[string]string{
+		"/a": okHead + "hi", "/b": okHead + "concurrent",
+		"/gone": "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\nno",
+	})
 	proxy := startProxy(t, handleProxy)
 	hits, misses := metrics.CacheHits.Load(), metrics.CacheMisses.Load()
 
@@ -176,6 +179,22 @@ func TestProxy(t *testing.T) {
 		if got := ask(t, proxy, req); got != want501 {
 			t.Errorf("%q: got %q, want %q", req, got, want501)
 		}
+	}
+
+	// Only 200 replies are cached: a 404 goes back to the origin every time.
+	for range 2 {
+		if got := ask(t, proxy, "GET "+o.url("/gone")+" HTTP/1.1\r\n\r\n"); !strings.HasPrefix(got, "HTTP/1.1 404 Not Found\r\nX-Cache: MISS\r\n") {
+			t.Errorf("404 reply = %q", got)
+		}
+	}
+	fetched := 0
+	for _, r := range o.requests() {
+		if strings.HasPrefix(r, "GET /gone ") {
+			fetched++
+		}
+	}
+	if fetched != 2 {
+		t.Errorf("origin saw %d requests for /gone, want 2 (404s are not cached)", fetched)
 	}
 
 	// 502 for a bad port, and for an empty upstream reply, which is not cached.

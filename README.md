@@ -6,7 +6,7 @@ in the git history at commit `f1cdbec`.
 
 | Program | Listens on | Metrics |
 |---|---|---|
-| `cmd/webserver` | `0.0.0.0:8080` (serves the current directory) | `127.0.0.1:9101/metrics` |
+| `cmd/webserver` | `127.0.0.1:8080` (serves the current directory) | `127.0.0.1:9101/metrics` |
 | `cmd/proxy` | `127.0.0.1:8888` (HTTP), `127.0.0.1:8889` (framed) | `127.0.0.1:9102/metrics` |
 | `cmd/framedclient` | connects to `127.0.0.1:8889` | none |
 
@@ -48,4 +48,5 @@ commands above; the cache hit ratio and latency panels need proxy traffic.
 Sibling-folder paths such as `/../ProxyPlus2/x` get 403, 400 says "Bad Request",
 If-Modified-Since works with whole-second dates, bad ports return 502 instead of hanging,
 unsupported schemes such as `ftp://` are rejected in both the plain and framed paths,
-and request heads and frames are size-capped.
+request heads and frames are size-capped, the web server listens on loopback only, and the
+proxy caches only 200 replies.
