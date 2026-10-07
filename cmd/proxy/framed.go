@@ -27,9 +27,6 @@ type stream struct {
 // per request, queues each stream once its object is fully fetched, and sends
 // one 4096-byte frame per turn in round-robin order, paced at rate. A big
 // object therefore never blocks a small one queued behind it.
-//
-// ponytail: relative pacing drifts if OS timers are coarse; switch to an
-// absolute schedule (nextAt += d) if the demo runs slow.
 func serveFramed(conn net.Conn) {
 	metrics.ActiveConns.Add(1)
 	defer metrics.ActiveConns.Add(-1)

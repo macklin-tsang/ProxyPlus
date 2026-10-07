@@ -30,7 +30,7 @@ const (
 
 // The cache maps "http://host:port/path" to the raw upstream response. Only
 // 200 replies are stored, so an error page is never served from the cache.
-// ponytail: one global lock, unbounded, no eviction, concurrent misses both
+// one global lock, unbounded, no eviction, concurrent misses both
 // fetch; add an in-flight map or LRU if origin load or memory matters.
 var (
 	cacheMu sync.Mutex
