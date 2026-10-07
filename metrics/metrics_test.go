@@ -12,7 +12,7 @@ func TestWrite(t *testing.T) {
 	ObserveUpstream(20 * time.Second)
 
 	var b strings.Builder
-	write(&b)
+	write(&b, true)
 	out := b.String()
 	for _, want := range []string{
 		"# TYPE proxyplus_requests_total counter\nproxyplus_requests_total 2\n",
@@ -27,5 +27,11 @@ func TestWrite(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
+	}
+
+	b.Reset()
+	write(&b, false)
+	if out := b.String(); !strings.Contains(out, "proxyplus_requests_total") || strings.Contains(out, "cache") || strings.Contains(out, "upstream") {
+		t.Errorf("web server output should have only the shared metrics:\n%s", out)
 	}
 }

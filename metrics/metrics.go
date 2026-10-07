@@ -1,6 +1,6 @@
 // Package metrics exposes Prometheus metrics in the plain-text exposition
-// format using only the standard library. Every binary exposes the same set;
-// metrics a binary never touches (cache, upstream) simply stay at zero.
+// format using only the standard library. The web server exposes the request,
+// connection and byte counters; the proxy adds the cache and upstream metrics.
 package metrics
 
 import (
@@ -42,25 +42,29 @@ func ObserveUpstream(d time.Duration) {
 	latency.Unlock()
 }
 
-// Serve starts the /metrics endpoint on addr in the background.
-func Serve(addr string) {
+// Serve starts the /metrics endpoint on addr in the background. proxy adds
+// the cache and upstream metrics, which only the proxy ever updates.
+func Serve(addr string, proxy bool) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-		write(w)
+		write(w, proxy)
 	})
 	go func() { log.Fatalf("metrics: %v", http.ListenAndServe(addr, mux)) }()
 }
 
-func write(w io.Writer) {
+func write(w io.Writer, proxy bool) {
 	metric := func(name, typ, help string, v int64) {
 		fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s %s\n%s %d\n", name, help, name, typ, name, v)
 	}
 	metric("proxyplus_requests_total", "counter", "HTTP requests and framed streams handled.", Requests.Load())
-	metric("proxyplus_cache_hits_total", "counter", "Proxy cache hits.", CacheHits.Load())
-	metric("proxyplus_cache_misses_total", "counter", "Proxy cache misses.", CacheMisses.Load())
 	metric("proxyplus_active_connections", "gauge", "Client connections currently open.", ActiveConns.Load())
 	metric("proxyplus_bytes_sent_total", "counter", "Bytes written to clients.", BytesSent.Load())
+	if !proxy {
+		return
+	}
+	metric("proxyplus_cache_hits_total", "counter", "Proxy cache hits.", CacheHits.Load())
+	metric("proxyplus_cache_misses_total", "counter", "Proxy cache misses.", CacheMisses.Load())
 	metric("proxyplus_upstream_bytes_total", "counter", "Bytes read from origin servers.", UpstreamBytes.Load())
 
 	latency.Lock()

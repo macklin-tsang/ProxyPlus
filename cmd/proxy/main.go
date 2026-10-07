@@ -46,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metrics.Serve(metricsAddr)
+	metrics.Serve(metricsAddr, true)
 	log.Printf("Framed proxy on %s rate=%d", frame.Addr, rate)
 	log.Printf("Proxy listening on http://%s (metrics on http://%s/metrics)", addr, metricsAddr)
 	go serve(fln, serveFramed)

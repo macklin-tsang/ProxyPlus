@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metrics.Serve(metricsAddr)
+	metrics.Serve(metricsAddr, false)
 	root, _ := filepath.Abs(".")
 	log.Printf("Serving %s on http://%s (metrics on http://%s/metrics)", root, addr, metricsAddr)
 	serve(ln, ".")

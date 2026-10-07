@@ -32,9 +32,9 @@ Frame layout (big-endian): 4-byte payload length, 4-byte stream id, 1-byte end f
 
 ## Metrics and dashboard
 
-Each program exposes Prometheus metrics (code in `metrics/`): request count, cache
-hits and misses, active connections, bytes sent, bytes read from origins, and an upstream
-latency histogram. To see them in Grafana (needs Docker):
+Each server exposes Prometheus metrics (code in `metrics/`): request count, active
+connections and bytes sent. The proxy also exposes cache hits and misses, bytes read from
+origins, and an upstream latency histogram. To see them in Grafana (needs Docker):
 
     cd monitoring
     docker compose up -d       # then open http://localhost:3000 (dashboard "ProxyPlus")
@@ -42,11 +42,3 @@ latency histogram. To see them in Grafana (needs Docker):
 
 Prometheus reaches the servers through `host.docker.internal`. Generate traffic with the
 commands above; the cache hit ratio and latency panels need proxy traffic.
-
-## Differences from the original Python version
-
-Sibling-folder paths such as `/../ProxyPlus2/x` get 403, 400 says "Bad Request",
-If-Modified-Since works with whole-second dates, bad ports return 502 instead of hanging,
-unsupported schemes such as `ftp://` are rejected in both the plain and framed paths,
-request heads and frames are size-capped, the web server listens on loopback only, and the
-proxy caches only 200 replies.
